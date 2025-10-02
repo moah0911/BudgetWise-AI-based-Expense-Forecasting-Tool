@@ -551,12 +551,18 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 👥 Team & Credits
 
 ### 🛠️ Core Development Team
-- **[Mohammed Arfath](https://github.com/Mohammed0Arfath)** - *Lead Developer & Project Architect*
   - AI/ML system design and implementation
   - Full-stack development and deployment
   - Technical documentation and user guides
 
 ### 🙏 Acknowledgments & Thanks
+### 🛠️ Core Development Team
+**moah0911** - Lead Developer & Project Architect
+   - AI/ML system design and implementation
+   - Full-stack development and deployment
+   - Technical documentation and user guides
+
+...existing code...
 
 #### **🔬 Research & Technology**
 - **Scikit-learn Community** - Machine learning foundation

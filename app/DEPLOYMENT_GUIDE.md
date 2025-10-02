@@ -265,8 +265,9 @@ Solution: Reduce dataset size or increase system RAM
 
 ## 📝 License & Credits
 
+
 **BudgetWise AI** is built with cutting-edge ML/DL technologies and open-source libraries.
 
-*Built with ❤️ by the BudgetWise AI Team*
+*Built with ❤️ by moah0911*
 
 **Version**: 1.0.0 | **Release Date**: October 2025

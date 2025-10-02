@@ -261,17 +261,12 @@ BudgetWise AI System Architecture
 
 ## 👥 Team & Credits
 
+
 ### **🛠️ Development Team**
-- **Lead Developer**: Advanced ML/DL implementation
-- **Data Scientist**: Model development and optimization
-- **Frontend Developer**: Streamlit application and UI/UX
-- **DevOps Engineer**: Deployment and infrastructure
+**moah0911**: All roles (ML/DL implementation, model development, UI/UX, deployment, documentation)
 
 ### **🙏 Acknowledgments**
-- **Open Source Community**: For excellent libraries and frameworks
-- **Research Community**: For cutting-edge ML/DL techniques
-- **Beta Testers**: For valuable feedback and testing
-- **Documentation Contributors**: For comprehensive guides
+Open Source Community, Research Community, Beta Testers, Documentation Contributors
 
 ---
 
