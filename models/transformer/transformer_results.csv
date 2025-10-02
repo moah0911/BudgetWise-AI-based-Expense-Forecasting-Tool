@@ -1,0 +1,2 @@
+,val_mae,val_rmse,val_mape,epochs_trained,convergence
+NBEATS,158409.015625,195120.66584552237,127.11226,29,Good

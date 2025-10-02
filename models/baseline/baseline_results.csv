@@ -1,0 +1,28 @@
+model_name,train_mae,train_rmse,train_mape,val_mae,val_rmse,val_mape,feature_importance,model_summary
+Linear Regression,2222517.0781816356,25831440.146637682,6646.21897020591,1022509.0785700872,1223102.8185938573,641.4758232326265,"{'year': np.float64(-3051.469358704727), 'month': np.float64(-560115.1254292954), 'day': np.float64(-48792.36697138931), 'weekday': np.float64(940551.3572264633), 'is_weekend': np.float64(-3906484.055393471), 'quarter': np.float64(13920.464162577451), 'day_of_year': np.float64(18290.08921876632), 'expense_lag_1': np.float64(-0.16615160676883534), 'expense_lag_7': np.float64(-0.0017826150287874043), 'expense_rolling_7': np.float64(1.1670195184415206), 'expense_rolling_30': np.float64(0.0001453777076676488)}",
+Prophet,3214997.276696636,28030199.053849563,14149.643290794089,2581213.2059592474,3994913.4171296027,1443.499245853332,,
+ARIMA,1229668.1300201858,28353382.438679278,975.3859322591776,682726.1366588459,709258.8795724992,521.2620788594618,,"                                SARIMAX Results                                
+===============================================================================
+Dep. Variable:     total_daily_expense   No. Observations:                 1495
+Model:                  ARIMA(1, 1, 1)   Log Likelihood              -27777.328
+Date:                 Wed, 01 Oct 2025   AIC                          55560.655
+Time:                         22:20:36   BIC                          55576.583
+Sample:                              0   HQIC                         55566.590
+                                - 1495                                         
+Covariance Type:                   opg                                         
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+ar.L1         -0.0006      0.827     -0.001      0.999      -1.622       1.620
+ma.L1         -0.9991      0.003   -314.690      0.000      -1.005      -0.993
+sigma2      1.007e+15        nan        nan        nan         nan         nan
+===================================================================================
+Ljung-Box (L1) (Q):                   0.00   Jarque-Bera (JB):         138194222.69
+Prob(Q):                              0.98   Prob(JB):                         0.00
+Heteroskedasticity (H):              40.87   Skew:                            38.59
+Prob(H) (two-sided):                  0.00   Kurtosis:                      1490.96
+===================================================================================
+
+Warnings:
+[1] Covariance matrix calculated using the outer product of gradients (complex-step).
+[2] Covariance matrix is singular or near-singular, with condition number    inf. Standard errors may be unstable."
