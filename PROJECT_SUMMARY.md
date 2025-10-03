@@ -263,7 +263,7 @@ BudgetWise AI System Architecture
 
 
 ### **🛠️ Development Team**
-**moah0911**: All roles (ML/DL implementation, model development, UI/UX, deployment, documentation)
+**gowth**: All roles (ML/DL implementation, model development, UI/UX, deployment, documentation)
 
 ### **🙏 Acknowledgments**
 Open Source Community, Research Community, Beta Testers, Documentation Contributors

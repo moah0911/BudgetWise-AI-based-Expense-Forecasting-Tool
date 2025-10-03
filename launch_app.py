@@ -18,35 +18,67 @@ def main():
     current_dir = Path.cwd()
     app_dir = current_dir / "app"
     
-    if not app_dir.exists():
-        print("❌ Error: app directory not found!")
-        print("Please run this script from the BudgetWise project root directory.")
+    # Check multiple possible locations for the app file
+    possible_app_files = [
+        app_dir / "budgetwise_app.py",  # Standard location
+        current_dir / "app" / "budgetwise_app.py",  # Alternative path
+        current_dir / "budgetwise_app.py"  # Root directory fallback
+    ]
+    
+    app_file = None
+    for file_path in possible_app_files:
+        if file_path.exists():
+            app_file = file_path
+            break
+    
+    if app_file is None:
+        print("❌ Error: budgetwise_app.py not found!")
+        print("Searched in:")
+        for file_path in possible_app_files:
+            print(f"  - {file_path}")
         return
     
-    # Check if required files exist
-    app_file = app_dir / "budgetwise_app.py"
-    if not app_file.exists():
-        print("❌ Error: budgetwise_app.py not found!")
-        return
+    # Determine the correct directory to run from
+    if app_file.parent.exists():
+        run_dir = app_file.parent
+    else:
+        run_dir = current_dir
     
     data_dir = current_dir / "data" / "processed"
     if not data_dir.exists():
-        print("❌ Error: processed data directory not found!")
-        print("Please ensure data preprocessing is complete.")
-        return
+        # Try alternative data directory locations
+        alt_data_dirs = [
+            current_dir / "data",
+            Path("data") / "processed",
+            Path("../data") / "processed"
+        ]
+        
+        data_dir_found = False
+        for alt_dir in alt_data_dirs:
+            if alt_dir.exists():
+                data_dir = alt_dir
+                data_dir_found = True
+                break
+        
+        if not data_dir_found:
+            print("⚠️  Warning: processed data directory not found!")
+            print("Please ensure data preprocessing is complete.")
+            # Don't exit, as the app might have fallback mechanisms
     
     print("✅ All requirements checked successfully!")
     print("📊 Launching BudgetWise AI Dashboard...")
+    print(f"📂 Running from directory: {run_dir}")
+    print(f"📄 Using app file: {app_file}")
     print("🌐 The application will open in your browser at: http://localhost:8502")
     print("⚠️  Press Ctrl+C to stop the application")
     print("=" * 60)
     
     try:
-        # Change to app directory and run streamlit
-        os.chdir(app_dir)
+        # Change to the correct directory and run streamlit
+        os.chdir(run_dir)
         subprocess.run([
             sys.executable, "-m", "streamlit", "run", 
-            "budgetwise_app.py", "--server.port", "8502"
+            app_file.name, "--server.port", "8502"
         ])
     except KeyboardInterrupt:
         print("\n🛑 Application stopped by user")

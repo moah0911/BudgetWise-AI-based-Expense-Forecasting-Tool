@@ -54,23 +54,73 @@ st.markdown("""
 def load_config():
     """Load configuration."""
     try:
-        with open("config/config.yaml", 'r') as file:
+        # Try multiple possible config paths
+        current_dir = Path(__file__).parent.absolute()
+        project_root = current_dir.parent.absolute()
+        
+        possible_config_paths = [
+            project_root / "config" / "config.yaml",  # Standard project structure
+            current_dir / ".." / "config" / "config.yaml",  # Relative from app/
+            Path("config") / "config.yaml",  # From current directory
+            Path("../config") / "config.yaml",  # Relative path
+            Path("config.yaml")  # Current directory
+        ]
+        
+        config_file = None
+        for path in possible_config_paths:
+            if path.exists():
+                config_file = path
+                break
+        
+        if config_file is None:
+            st.error("Configuration file not found. Please ensure config/config.yaml exists.")
+            return {}
+        
+        with open(config_file, 'r') as file:
             return yaml.safe_load(file)
-    except FileNotFoundError:
-        st.error("Configuration file not found. Please ensure config/config.yaml exists.")
+    except Exception as e:
+        st.error(f"Error loading configuration: {str(e)}")
         return {}
 
 @st.cache_data
 def load_data():
     """Load processed and feature data."""
     try:
-        # Load processed data
-        processed_path = Path("data/processed/")
+        # Try multiple possible data paths
+        current_dir = Path(__file__).parent.absolute()
+        project_root = current_dir.parent.absolute()
+        
+        possible_data_paths = [
+            project_root / "data" / "processed",  # Standard project structure
+            current_dir / ".." / "data" / "processed",  # Relative from app/
+            Path("data") / "processed",  # From current directory
+            Path("../data") / "processed",  # Relative path
+        ]
+        
+        processed_path = None
+        for path in possible_data_paths:
+            if path.exists():
+                processed_path = path
+                break
+        
+        if processed_path is None:
+            st.error("Processed data directory not found. Please run data preprocessing first.")
+            return pd.DataFrame()
+        
+        # Load processed data files
         processed_files = list(processed_path.glob("*.csv"))
         
         if processed_files:
-            data = pd.read_csv(processed_files[0])
-            data['date'] = pd.to_datetime(data['date'])
+            # Try to load train_data.csv first, then fallback to any CSV
+            train_files = [f for f in processed_files if "train" in f.name.lower()]
+            if train_files:
+                data_file = train_files[0]
+            else:
+                data_file = processed_files[0]
+                
+            data = pd.read_csv(data_file)
+            if 'date' in data.columns:
+                data['date'] = pd.to_datetime(data['date'])
             return data
         else:
             st.error("No processed data found. Please run data preprocessing first.")
@@ -83,18 +133,45 @@ def load_data():
 def load_model_performance():
     """Load model performance data."""
     try:
-        models_path = Path("models")
+        # Try multiple possible models paths
+        current_dir = Path(__file__).parent.absolute()
+        project_root = current_dir.parent.absolute()
+        
+        possible_models_paths = [
+            project_root / "models",  # Standard project structure
+            current_dir / ".." / "models",  # Relative from app/
+            Path("models"),  # From current directory
+            Path("../models"),  # Relative path
+        ]
+        
+        models_path = None
+        for path in possible_models_paths:
+            if path.exists():
+                models_path = path
+                break
+        
+        if models_path is None:
+            st.warning("Models directory not found. Model performance data will not be available.")
+            return {}
+        
+        # Updated performance files with correct extensions
         performance_files = {
-            'baseline': 'baseline_performance.pkl',
-            'ml': 'ml_performance.pkl', 
-            'dl': 'dl_performance.pkl'
+            'baseline': 'baseline/baseline_results.csv',
+            'ml': 'ml/ml_results.csv', 
+            'dl': 'deep_learning/dl_results.csv'
         }
         
         performance_data = {}
         for model_type, filename in performance_files.items():
             file_path = models_path / filename
             if file_path.exists():
-                performance_data[model_type] = joblib.load(file_path)
+                try:
+                    # Load CSV files instead of pickle files
+                    performance_data[model_type] = pd.read_csv(file_path)
+                except Exception as e:
+                    st.warning(f"Could not load {model_type} performance data: {str(e)}")
+            else:
+                st.warning(f"Performance file not found: {file_path}")
         
         return performance_data
     except Exception as e:
@@ -110,23 +187,24 @@ def create_expense_overview(data):
         return
     
     # Daily expense trend
-    daily_expenses = data.groupby('date')['amount'].sum().reset_index()
-    
-    fig = px.line(
-        daily_expenses, 
-        x='date', 
-        y='amount',
-        title="Daily Expense Trend",
-        labels={'amount': 'Amount ($)', 'date': 'Date'}
-    )
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    if 'date' in data.columns and 'amount' in data.columns:
+        daily_expenses = data.groupby('date')['amount'].sum().reset_index()
+        
+        fig = px.line(
+            daily_expenses, 
+            x='date', 
+            y='amount',
+            title="Daily Expense Trend",
+            labels={'amount': 'Amount ($)', 'date': 'Date'}
+        )
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
     
     # Expense by category
     col1, col2 = st.columns(2)
     
     with col1:
-        if 'category' in data.columns:
+        if 'category' in data.columns and 'amount' in data.columns:
             category_expenses = data.groupby('category')['amount'].sum().reset_index()
             category_expenses = category_expenses.sort_values('amount', ascending=False).head(10)
             
@@ -142,10 +220,13 @@ def create_expense_overview(data):
             st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        if 'category' in data.columns:
+        if 'category' in data.columns and 'amount' in data.columns:
             # Pie chart for category distribution
+            category_expenses = data.groupby('category')['amount'].sum().reset_index()
+            category_expenses = category_expenses.sort_values('amount', ascending=False).head(8)
+            
             fig = px.pie(
-                category_expenses.head(8),
+                category_expenses,
                 values='amount',
                 names='category',
                 title="Expense Distribution by Category"
@@ -161,70 +242,79 @@ def create_model_performance_dashboard(performance_data):
         st.warning("No model performance data available. Please train models first.")
         return
     
-    # Combine all performance data
-    all_models = {}
-    for model_type, categories in performance_data.items():
-        for category, models in categories.items():
-            for model_name, metrics in models.items():
-                key = f"{model_type}_{model_name}_{category}"
-                all_models[key] = {**metrics, 'model_type': model_type, 'category': category, 'model_name': model_name}
+    # Process performance data
+    all_models = []
+    
+    for model_type, df in performance_data.items():
+        if isinstance(df, pd.DataFrame):
+            for _, row in df.iterrows():
+                model_info = {
+                    'model_type': model_type,
+                    'model_name': row.get('model_name', 'Unknown'),
+                    'MAE': row.get('val_mae', row.get('MAE', None)),
+                    'RMSE': row.get('val_rmse', row.get('RMSE', None)),
+                    'MAPE': row.get('val_mape', row.get('MAPE', None)),
+                    'Directional_Accuracy': row.get('Directional_Accuracy', None)
+                }
+                # Only include models with valid metrics
+                if model_info['MAE'] is not None and not pd.isna(model_info['MAE']):
+                    all_models.append(model_info)
     
     if not all_models:
-        st.warning("No model performance metrics available.")
+        st.warning("No valid model performance metrics available.")
         return
     
     # Convert to DataFrame
-    performance_df = pd.DataFrame.from_dict(all_models, orient='index')
+    performance_df = pd.DataFrame(all_models)
     
     # Model type performance comparison
     col1, col2 = st.columns(2)
     
     with col1:
         if 'MAE' in performance_df.columns:
-            avg_mae_by_type = performance_df.groupby('model_type')['MAE'].mean().reset_index()
-            
-            fig = px.bar(
-                avg_mae_by_type,
-                x='model_type',
-                y='MAE',
-                title="Average MAE by Model Type",
-                labels={'MAE': 'Mean Absolute Error', 'model_type': 'Model Type'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            # Remove invalid values
+            valid_mae_data = performance_df.dropna(subset=['MAE'])
+            if not valid_mae_data.empty:
+                avg_mae_by_type = valid_mae_data.groupby('model_type')['MAE'].mean().reset_index()
+                
+                fig = px.bar(
+                    avg_mae_by_type,
+                    x='model_type',
+                    y='MAE',
+                    title="Average MAE by Model Type",
+                    labels={'MAE': 'Mean Absolute Error', 'model_type': 'Model Type'}
+                )
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        if 'Directional_Accuracy' in performance_df.columns:
-            avg_accuracy_by_type = performance_df.groupby('model_type')['Directional_Accuracy'].mean().reset_index()
-            
-            fig = px.bar(
-                avg_accuracy_by_type,
-                x='model_type',
-                y='Directional_Accuracy',
-                title="Average Directional Accuracy by Model Type",
-                labels={'Directional_Accuracy': 'Directional Accuracy (%)', 'model_type': 'Model Type'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
+        if 'MAPE' in performance_df.columns:
+            # Remove invalid values
+            valid_mape_data = performance_df.dropna(subset=['MAPE'])
+            valid_mape_data = valid_mape_data[valid_mape_data['MAPE'] < 10000]  # Filter outliers
+            if not valid_mape_data.empty:
+                avg_mape_by_type = valid_mape_data.groupby('model_type')['MAPE'].mean().reset_index()
+                
+                fig = px.bar(
+                    avg_mape_by_type,
+                    x='model_type',
+                    y='MAPE',
+                    title="Average MAPE by Model Type",
+                    labels={'MAPE': 'Mean Absolute Percentage Error (%)', 'model_type': 'Model Type'}
+                )
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
     
-    # Best models per category
-    st.subheader("🏆 Best Models per Category")
-    
-    best_models = {}
-    for category in performance_df['category'].unique():
-        category_data = performance_df[performance_df['category'] == category]
-        if 'MAE' in category_data.columns:
-            best_model_idx = category_data['MAE'].idxmin()
-            best_models[category] = category_data.loc[best_model_idx]
-    
-    if best_models:
-        best_models_df = pd.DataFrame.from_dict(best_models, orient='index')
-        best_models_df = best_models_df.reset_index().rename(columns={'index': 'Category'})
-        
-        # Display as table
-        display_columns = ['Category', 'model_type', 'model_name', 'MAE', 'RMSE', 'Directional_Accuracy']
-        available_columns = [col for col in display_columns if col in best_models_df.columns]
+    # Best models table
+    st.subheader("🏆 Best Models")
+    if not performance_df.empty:
+        # Sort by MAE (lower is better)
+        best_models = performance_df.sort_values('MAE').drop_duplicates('model_type').head(5)
+        display_columns = ['model_type', 'model_name', 'MAE', 'RMSE', 'MAPE']
+        available_columns = [col for col in display_columns if col in best_models.columns]
         
         st.dataframe(
-            best_models_df[available_columns].round(3),
+            best_models[available_columns].round(2),
             use_container_width=True
         )
 
@@ -271,19 +361,29 @@ def create_forecasting_interface(data):
     if st.button("Generate Forecast", type="primary"):
         with st.spinner("Generating forecast..."):
             # Demo forecast (in production, this would use trained models)
-            last_date = data['date'].max()
-            forecast_dates = pd.date_range(
-                start=last_date + pd.Timedelta(days=1),
-                periods=forecast_horizon,
-                freq='D'
-            )
+            if 'date' in data.columns:
+                last_date = data['date'].max()
+                forecast_dates = pd.date_range(
+                    start=last_date + pd.Timedelta(days=1),
+                    periods=forecast_horizon,
+                    freq='D'
+                )
+            else:
+                # Fallback if no date column
+                forecast_dates = pd.date_range(
+                    start=pd.Timestamp.now(),
+                    periods=forecast_horizon,
+                    freq='D'
+                )
             
             # Demo predictions (normally from trained models)
-            if selected_category == 'All':
-                recent_avg = data.groupby('date')['amount'].sum().tail(30).mean()
-            else:
+            if selected_category == 'All' and 'amount' in data.columns:
+                recent_avg = data.groupby('date')['amount'].sum().tail(30).mean() if 'date' in data.columns else data['amount'].mean()
+            elif 'amount' in data.columns:
                 category_data = data[data['category'] == selected_category] if 'category' in data.columns else data
-                recent_avg = category_data.groupby('date')['amount'].sum().tail(30).mean()
+                recent_avg = category_data.groupby('date')['amount'].sum().tail(30).mean() if 'date' in category_data.columns else category_data['amount'].mean()
+            else:
+                recent_avg = 1000  # Default value
             
             # Generate synthetic forecast
             np.random.seed(42)
@@ -302,19 +402,20 @@ def create_forecasting_interface(data):
             fig = go.Figure()
             
             # Historical data
-            if selected_category == 'All':
-                historical = data.groupby('date')['amount'].sum().reset_index()
-            else:
-                historical_data = data[data['category'] == selected_category] if 'category' in data.columns else data
-                historical = historical_data.groupby('date')['amount'].sum().reset_index()
-            
-            fig.add_trace(go.Scatter(
-                x=historical['date'].tail(30),
-                y=historical['amount'].tail(30),
-                mode='lines',
-                name='Historical',
-                line=dict(color='blue')
-            ))
+            if 'date' in data.columns and 'amount' in data.columns:
+                if selected_category == 'All':
+                    historical = data.groupby('date')['amount'].sum().reset_index()
+                else:
+                    historical_data = data[data['category'] == selected_category] if 'category' in data.columns else data
+                    historical = historical_data.groupby('date')['amount'].sum().reset_index()
+                
+                fig.add_trace(go.Scatter(
+                    x=historical['date'].tail(30),
+                    y=historical['amount'].tail(30),
+                    mode='lines',
+                    name='Historical',
+                    line=dict(color='blue')
+                ))
             
             # Forecast
             fig.add_trace(go.Scatter(
@@ -363,7 +464,7 @@ def create_forecasting_interface(data):
                 st.metric(
                     "Avg Daily Forecast",
                     f"${forecast_df['forecast'].mean():.2f}",
-                    delta=f"{((forecast_df['forecast'].mean() / recent_avg) - 1) * 100:.1f}%"
+                    delta=f"{((forecast_df['forecast'].mean() / recent_avg) - 1) * 100:.1f}%" if recent_avg != 0 else None
                 )
             
             with col2:
@@ -521,6 +622,7 @@ def create_budget_optimizer():
                     text='Percentage'
                 )
                 fig.update_traces(texttemplate='%{text:.1f}%', textposition='inside')
+                fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
             
             # Recommendations
@@ -564,12 +666,14 @@ def main():
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                total_expenses = data['amount'].sum()
-                st.metric("Total Expenses", f"${total_expenses:,.2f}")
+                if 'amount' in data.columns:
+                    total_expenses = data['amount'].sum()
+                    st.metric("Total Expenses", f"${total_expenses:,.2f}")
             
             with col2:
-                avg_daily = data.groupby('date')['amount'].sum().mean()
-                st.metric("Avg Daily Expense", f"${avg_daily:.2f}")
+                if 'date' in data.columns:
+                    avg_daily = data.groupby('date')['amount'].sum().mean() if 'amount' in data.columns else 0
+                    st.metric("Avg Daily Expense", f"${avg_daily:.2f}")
             
             with col3:
                 num_transactions = len(data)
@@ -584,28 +688,29 @@ def main():
             st.markdown('<div class="insight-box">', unsafe_allow_html=True)
             st.markdown("**💡 Quick Insights:**")
             
-            if 'category' in data.columns:
+            if 'category' in data.columns and 'amount' in data.columns:
                 top_category = data.groupby('category')['amount'].sum().idxmax()
                 top_amount = data.groupby('category')['amount'].sum().max()
                 st.markdown(f"• Your highest expense category is **{top_category}** with ${top_amount:,.2f}")
             
-            recent_trend = data.groupby('date')['amount'].sum().tail(7).mean()
-            overall_avg = data.groupby('date')['amount'].sum().mean()
-            trend_change = ((recent_trend / overall_avg) - 1) * 100
-            
-            if trend_change > 5:
-                st.markdown(f"• Your recent spending is **{trend_change:.1f}% higher** than average")
-            elif trend_change < -5:
-                st.markdown(f"• Your recent spending is **{abs(trend_change):.1f}% lower** than average")
-            else:
-                st.markdown("• Your recent spending is consistent with your average")
+            if 'date' in data.columns and 'amount' in data.columns:
+                recent_trend = data.groupby('date')['amount'].sum().tail(7).mean()
+                overall_avg = data.groupby('date')['amount'].sum().mean()
+                trend_change = ((recent_trend / overall_avg) - 1) * 100 if overall_avg != 0 else 0
+                
+                if trend_change > 5:
+                    st.markdown(f"• Your recent spending is **{trend_change:.1f}% higher** than average")
+                elif trend_change < -5:
+                    st.markdown(f"• Your recent spending is **{abs(trend_change):.1f}% lower** than average")
+                else:
+                    st.markdown("• Your recent spending is consistent with your average")
             
             st.markdown('</div>', unsafe_allow_html=True)
         
         # Recent activity
         if not data.empty:
             st.subheader("📈 Recent Activity")
-            recent_data = data.sort_values('date', ascending=False).head(10)
+            recent_data = data.tail(10)
             st.dataframe(recent_data, use_container_width=True)
     
     elif page == "📊 Expense Analysis":

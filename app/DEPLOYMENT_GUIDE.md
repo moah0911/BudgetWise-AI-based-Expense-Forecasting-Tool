@@ -268,6 +268,6 @@ Solution: Reduce dataset size or increase system RAM
 
 **BudgetWise AI** is built with cutting-edge ML/DL technologies and open-source libraries.
 
-*Built with ❤️ by moah0911*
+*Built with ❤️ by gowth*
 
 **Version**: 1.0.0 | **Release Date**: October 2025

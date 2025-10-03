@@ -74,38 +74,52 @@ class BudgetWiseApp:
     def setup_paths(self):
         """Setup file paths with cloud deployment fallbacks"""
         # Try multiple path configurations for different deployment scenarios
+        current_dir = Path(__file__).parent.absolute()
+        project_root = current_dir.parent.absolute()
+        
         possible_data_paths = [
-            Path("../data/processed"),      # Local development from app/ directory
-            Path("data/processed"),         # From root directory
-            Path("./data/processed"),       # Alternative local path
-            Path(".")                       # Root directory fallback
+            project_root / "data" / "processed",    # Standard project structure
+            current_dir / ".." / "data" / "processed",  # Relative from app/
+            Path("data") / "processed",             # From current directory
+            Path("../data") / "processed",          # Relative path
+            Path(".")                               # Current directory fallback
         ]
         
         possible_models_paths = [
-            Path("../models"),              # Local development from app/ directory  
-            Path("models"),                 # From root directory
-            Path("./models")                # Alternative local path
+            project_root / "models",                # Standard project structure
+            current_dir / ".." / "models",          # Relative from app/
+            Path("models"),                         # From current directory
+            Path("../models"),                      # Relative path
         ]
         
         # Find the first existing data path
         self.data_path = None
         for path in possible_data_paths:
-            if path.exists() and (path / "train_data.csv").exists():
-                self.data_path = path
-                break
+            try:
+                if path.exists() and list(path.glob("*.csv")):
+                    self.data_path = path.resolve()
+                    break
+            except:
+                continue
         
         # Find the first existing models path
         self.models_path = None
         for path in possible_models_paths:
-            if path.exists():
-                self.models_path = path
-                break
+            try:
+                if path.exists() and list(path.glob("*")):
+                    self.models_path = path.resolve()
+                    break
+            except:
+                continue
         
         # Set fallback paths if none found
         if self.data_path is None:
-            self.data_path = Path("../data/processed")
+            self.data_path = project_root / "data" / "processed"
         if self.models_path is None:
-            self.models_path = Path("../models")
+            self.models_path = project_root / "models"
+            
+        st.info(f"📁 Data path: {self.data_path}")
+        st.info(f"📁 Models path: {self.models_path}")
     
     def create_sample_data(self):
         """Create sample data for demo purposes when real data isn't available"""
@@ -136,48 +150,72 @@ class BudgetWiseApp:
                 'description': f"{category} expense"
             })
         
-        return pd.DataFrame(sample_data)
+        df = pd.DataFrame(sample_data)
+        # Create the required total_daily_expense column
+        df['total_daily_expense'] = df.groupby('date')['amount'].transform('sum')
+        return df
         
     def load_data(self):
         """Load processed data with fallback for cloud deployment"""
         try:
             # First try to load the split datasets (train/val/test)
-            if (self.data_path / "train_data.csv").exists():
-                self.train_data = pd.read_csv(self.data_path / "train_data.csv", parse_dates=['date'])
-                self.val_data = pd.read_csv(self.data_path / "val_data.csv", parse_dates=['date'])
-                self.test_data = pd.read_csv(self.data_path / "test_data.csv", parse_dates=['date'])
+            train_file = self.data_path / "train_data.csv"
+            val_file = self.data_path / "val_data.csv"
+            test_file = self.data_path / "test_data.csv"
+            
+            if train_file.exists():
+                self.train_data = pd.read_csv(train_file, parse_dates=['date'])
+                self.val_data = pd.read_csv(val_file, parse_dates=['date']) if val_file.exists() else pd.DataFrame()
+                self.test_data = pd.read_csv(test_file, parse_dates=['date']) if test_file.exists() else pd.DataFrame()
                 
                 # Combine all data for analysis
-                self.all_data = pd.concat([self.train_data, self.val_data, self.test_data], ignore_index=True)
-                self.all_data = self.all_data.sort_values('date').reset_index(drop=True)
-                return
+                dataframes = [df for df in [self.train_data, self.val_data, self.test_data] if not df.empty]
+                if dataframes:
+                    self.all_data = pd.concat(dataframes, ignore_index=True)
+                    self.all_data = self.all_data.sort_values('date').reset_index(drop=True)
+                    
+                    # Ensure total_daily_expense column exists
+                    if 'total_daily_expense' not in self.all_data.columns:
+                        if 'amount' in self.all_data.columns:
+                            self.all_data['total_daily_expense'] = self.all_data.groupby('date')['amount'].transform('sum')
+                        else:
+                            self.all_data['total_daily_expense'] = 0
+                    return
             
             # Try to load the original dataset or sample data
             possible_files = [
-                "../budgetwise_finance_dataset.csv",
-                "budgetwise_finance_dataset.csv",
-                "../data/budgetwise_finance_dataset.csv",
-                "data/budgetwise_finance_dataset.csv",
-                "../sample_expense_data.csv",
-                "sample_expense_data.csv"
+                self.data_path / "cleaned_transactions.csv",
+                project_root / "budgetwise_finance_dataset.csv",
+                project_root / "data" / "budgetwise_finance_dataset.csv",
+                project_root / "sample_expense_data.csv",
+                Path("budgetwise_finance_dataset.csv"),
+                Path("sample_expense_data.csv")
             ]
             
             for file_path in possible_files:
                 try:
-                    self.all_data = pd.read_csv(file_path, parse_dates=['date'])
-                    self.all_data = self.all_data.sort_values('date').reset_index(drop=True)
-                    
-                    # Create train/val/test splits for compatibility
-                    total_len = len(self.all_data)
-                    train_end = int(total_len * 0.7)
-                    val_end = int(total_len * 0.85)
-                    
-                    self.train_data = self.all_data[:train_end].copy()
-                    self.val_data = self.all_data[train_end:val_end].copy()
-                    self.test_data = self.all_data[val_end:].copy()
-                    
-                    st.info("📊 Loaded original dataset. Functionality may be limited without preprocessed data.")
-                    return
+                    if file_path.exists():
+                        self.all_data = pd.read_csv(file_path, parse_dates=['date'])
+                        self.all_data = self.all_data.sort_values('date').reset_index(drop=True)
+                        
+                        # Ensure total_daily_expense column exists
+                        if 'total_daily_expense' not in self.all_data.columns:
+                            if 'amount' in self.all_data.columns:
+                                self.all_data['total_daily_expense'] = self.all_data.groupby('date')['amount'].transform('sum')
+                            else:
+                                self.all_data['total_daily_expense'] = 0
+                        
+                        # Create train/val/test splits for compatibility
+                        total_len = len(self.all_data)
+                        train_end = int(total_len * 0.7)
+                        val_end = int(total_len * 0.85)
+                        
+                        self.train_data = self.all_data[:train_end].copy()
+                        self.val_data = self.all_data[train_end:val_end].copy()
+                        self.test_data = self.all_data[val_end:].copy()
+                        
+                        st.info(f"📊 Loaded dataset from {file_path}. Functionality may be limited without preprocessed data.")
+                        return
                 except:
                     continue
             
@@ -264,9 +302,11 @@ class BudgetWiseApp:
                 possible_paths.append(self.models_path / file_path)
             
             # Add other possible paths
+            project_root = Path(__file__).parent.parent.absolute()
             possible_paths.extend([
-                Path("../models") / file_path,
+                project_root / "models" / file_path,
                 Path("models") / file_path,
+                Path("../models") / file_path,
                 Path("./models") / file_path
             ])
             
@@ -276,8 +316,10 @@ class BudgetWiseApp:
                         self.model_results[category] = pd.read_csv(path, index_col=0)
                         loaded = True
                         loaded_categories += 1
+                        st.info(f"✅ Loaded {category} model results from {path}")
                         break
-                except:
+                except Exception as e:
+                    st.warning(f"⚠️ Failed to load {category} from {path}: {e}")
                     continue
             
             if not loaded:
@@ -285,6 +327,7 @@ class BudgetWiseApp:
                 sample_results = self.create_sample_model_results()
                 if category in sample_results:
                     self.model_results[category] = sample_results[category]
+                    st.warning(f"⚠️ Using sample {category} results - train models for real data")
         
         # If no real model results found, use all sample results
         if loaded_categories == 0:
@@ -318,64 +361,69 @@ class BudgetWiseApp:
             st.metric("📅 Date Range", f"{date_range} days", "Data coverage")
             
         with col3:
-            avg_expense = self.all_data['total_daily_expense'].mean()
-            st.metric("💵 Avg Daily Expense", f"${avg_expense:,.2f}", "Historical average")
+            if 'total_daily_expense' in self.all_data.columns:
+                avg_expense = self.all_data['total_daily_expense'].mean()
+                st.metric("💵 Avg Daily Expense", f"${avg_expense:,.2f}", "Historical average")
             
         with col4:
-            max_expense = self.all_data['total_daily_expense'].max()
-            st.metric("📈 Max Daily Expense", f"${max_expense:,.2f}", "Peak spending")
+            if 'total_daily_expense' in self.all_data.columns:
+                max_expense = self.all_data['total_daily_expense'].max()
+                st.metric("📈 Max Daily Expense", f"${max_expense:,.2f}", "Peak spending")
         
         # Data visualization
         st.markdown("---")
         
         # Time series plot
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=self.all_data['date'],
-            y=self.all_data['total_daily_expense'],
-            mode='lines',
-            name='Daily Expenses',
-            line=dict(color='#1f77b4', width=2)
-        ))
-        
-        fig.update_layout(
-            title="📈 Historical Daily Expenses",
-            xaxis_title="Date",
-            yaxis_title="Daily Expense ($)",
-            height=400,
-            template="plotly_white"
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+        if 'total_daily_expense' in self.all_data.columns:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=self.all_data['date'],
+                y=self.all_data['total_daily_expense'],
+                mode='lines',
+                name='Daily Expenses',
+                line=dict(color='#1f77b4', width=2)
+            ))
+            
+            fig.update_layout(
+                title="📈 Historical Daily Expenses",
+                xaxis_title="Date",
+                yaxis_title="Daily Expense ($)",
+                height=400,
+                template="plotly_white"
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
         
         # Expense distribution
         col1, col2 = st.columns(2)
         
         with col1:
-            fig_hist = px.histogram(
-                self.all_data, 
-                x='total_daily_expense',
-                nbins=50,
-                title="💹 Expense Distribution",
-                template="plotly_white"
-            )
-            fig_hist.update_layout(height=350)
-            st.plotly_chart(fig_hist, use_container_width=True)
+            if 'total_daily_expense' in self.all_data.columns:
+                fig_hist = px.histogram(
+                    self.all_data, 
+                    x='total_daily_expense',
+                    nbins=50,
+                    title="💹 Expense Distribution",
+                    template="plotly_white"
+                )
+                fig_hist.update_layout(height=350)
+                st.plotly_chart(fig_hist, use_container_width=True)
         
         with col2:
             # Monthly trends
-            self.all_data['month'] = self.all_data['date'].dt.month
-            monthly_avg = self.all_data.groupby('month')['total_daily_expense'].mean().reset_index()
-            
-            fig_monthly = px.bar(
-                monthly_avg,
-                x='month',
-                y='total_daily_expense',
-                title="📊 Monthly Average Expenses",
-                template="plotly_white"
-            )
-            fig_monthly.update_layout(height=350)
-            st.plotly_chart(fig_monthly, use_container_width=True)
+            if 'total_daily_expense' in self.all_data.columns:
+                self.all_data['month'] = self.all_data['date'].dt.month
+                monthly_avg = self.all_data.groupby('month')['total_daily_expense'].mean().reset_index()
+                
+                fig_monthly = px.bar(
+                    monthly_avg,
+                    x='month',
+                    y='total_daily_expense',
+                    title="📊 Monthly Average Expenses",
+                    template="plotly_white"
+                )
+                fig_monthly.update_layout(height=350)
+                st.plotly_chart(fig_monthly, use_container_width=True)
     
     def create_model_comparison(self):
         """Create model comparison dashboard"""
@@ -394,9 +442,9 @@ class BudgetWiseApp:
                 all_results.append({
                     'Category': category,
                     'Model': model_name,
-                    'MAE': row.get('val_mae', float('inf')),
-                    'RMSE': row.get('val_rmse', float('inf')),
-                    'MAPE': row.get('val_mape', float('inf'))
+                    'MAE': row.get('val_mae', row.get('MAE', float('inf'))),
+                    'RMSE': row.get('val_rmse', row.get('RMSE', float('inf'))),
+                    'MAPE': row.get('val_mape', row.get('MAPE', float('inf')))
                 })
         
         results_df = pd.DataFrame(all_results)
@@ -487,26 +535,27 @@ class BudgetWiseApp:
         st.markdown("### 📈 Recent Expense Trends")
         
         # Get recent data
-        recent_data = self.all_data.tail(30)
-        
-        fig_recent = go.Figure()
-        fig_recent.add_trace(go.Scatter(
-            x=recent_data['date'],
-            y=recent_data['total_daily_expense'],
-            mode='lines+markers',
-            name='Recent Expenses',
-            line=dict(color='#2E86AB', width=3)
-        ))
-        
-        fig_recent.update_layout(
-            title="📊 Last 30 Days Expense Trend",
-            xaxis_title="Date",
-            yaxis_title="Daily Expense ($)",
-            height=350,
-            template="plotly_white"
-        )
-        
-        st.plotly_chart(fig_recent, use_container_width=True)
+        if 'total_daily_expense' in self.all_data.columns:
+            recent_data = self.all_data.tail(30)
+            
+            fig_recent = go.Figure()
+            fig_recent.add_trace(go.Scatter(
+                x=recent_data['date'],
+                y=recent_data['total_daily_expense'],
+                mode='lines+markers',
+                name='Recent Expenses',
+                line=dict(color='#2E86AB', width=3)
+            ))
+            
+            fig_recent.update_layout(
+                title="📊 Last 30 Days Expense Trend",
+                xaxis_title="Date",
+                yaxis_title="Daily Expense ($)",
+                height=350,
+                template="plotly_white"
+            )
+            
+            st.plotly_chart(fig_recent, use_container_width=True)
         
         # Generate predictions (simplified for demo)
         if st.button("🚀 Generate Predictions", type="primary"):
@@ -537,13 +586,15 @@ class BudgetWiseApp:
                 fig_pred = go.Figure()
                 
                 # Historical data
-                fig_pred.add_trace(go.Scatter(
-                    x=recent_data['date'],
-                    y=recent_data['total_daily_expense'],
-                    mode='lines',
-                    name='Historical',
-                    line=dict(color='#1f77b4', width=2)
-                ))
+                if 'total_daily_expense' in self.all_data.columns:
+                    recent_data = self.all_data.tail(30)
+                    fig_pred.add_trace(go.Scatter(
+                        x=recent_data['date'],
+                        y=recent_data['total_daily_expense'],
+                        mode='lines',
+                        name='Historical',
+                        line=dict(color='#1f77b4', width=2)
+                    ))
                 
                 # Predictions
                 pred_dates = [start_date + timedelta(days=i) for i in range(prediction_days)]
@@ -583,8 +634,12 @@ class BudgetWiseApp:
         """Generate mock predictions for demo purposes"""
         
         # Use recent trends to generate realistic predictions
-        recent_avg = self.all_data.tail(30)['total_daily_expense'].mean()
-        recent_std = self.all_data.tail(30)['total_daily_expense'].std()
+        if 'total_daily_expense' in self.all_data.columns:
+            recent_avg = self.all_data.tail(30)['total_daily_expense'].mean()
+            recent_std = self.all_data.tail(30)['total_daily_expense'].std()
+        else:
+            recent_avg = 1000  # Default value
+            recent_std = 200   # Default value
         
         # Generate predictions with some randomness
         daily_predictions = []
@@ -599,7 +654,7 @@ class BudgetWiseApp:
         
         avg_prediction = np.mean(daily_predictions)
         total_prediction = np.sum(daily_predictions)
-        change_pct = ((avg_prediction - recent_avg) / recent_avg) * 100
+        change_pct = ((avg_prediction - recent_avg) / recent_avg) * 100 if recent_avg != 0 else 0
         
         return {
             'daily_predictions': daily_predictions,
@@ -617,36 +672,37 @@ class BudgetWiseApp:
         st.markdown("### 📊 Spending Pattern Analysis")
         
         # Weekly patterns
-        self.all_data['weekday'] = self.all_data['date'].dt.day_name()
-        weekly_avg = self.all_data.groupby('weekday')['total_daily_expense'].mean().reindex([
-            'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-        ])
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            fig_weekly = px.bar(
-                x=weekly_avg.index,
-                y=weekly_avg.values,
-                title="📅 Average Spending by Day of Week",
-                template="plotly_white"
-            )
-            fig_weekly.update_layout(height=350)
-            st.plotly_chart(fig_weekly, use_container_width=True)
-        
-        with col2:
-            # Monthly seasonality
-            self.all_data['month_name'] = self.all_data['date'].dt.month_name()
-            monthly_avg = self.all_data.groupby('month_name')['total_daily_expense'].mean()
+        if 'total_daily_expense' in self.all_data.columns:
+            self.all_data['weekday'] = self.all_data['date'].dt.day_name()
+            weekly_avg = self.all_data.groupby('weekday')['total_daily_expense'].mean().reindex([
+                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+            ])
             
-            fig_seasonal = px.line(
-                x=monthly_avg.index,
-                y=monthly_avg.values,
-                title="🌍 Seasonal Spending Patterns",
-                template="plotly_white"
-            )
-            fig_seasonal.update_layout(height=350)
-            st.plotly_chart(fig_seasonal, use_container_width=True)
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig_weekly = px.bar(
+                    x=weekly_avg.index,
+                    y=weekly_avg.values,
+                    title="📅 Average Spending by Day of Week",
+                    template="plotly_white"
+                )
+                fig_weekly.update_layout(height=350)
+                st.plotly_chart(fig_weekly, use_container_width=True)
+            
+            with col2:
+                # Monthly seasonality
+                self.all_data['month_name'] = self.all_data['date'].dt.month_name()
+                monthly_avg = self.all_data.groupby('month_name')['total_daily_expense'].mean()
+                
+                fig_seasonal = px.line(
+                    x=monthly_avg.index,
+                    y=monthly_avg.values,
+                    title="🌍 Seasonal Spending Patterns",
+                    template="plotly_white"
+                )
+                fig_seasonal.update_layout(height=350)
+                st.plotly_chart(fig_seasonal, use_container_width=True)
         
         # AI Insights
         st.markdown("### 🤖 AI-Generated Insights")
@@ -674,18 +730,21 @@ class BudgetWiseApp:
         
         insights = []
         
+        if 'total_daily_expense' not in self.all_data.columns:
+            return ["Insufficient data for detailed insights."]
+        
         # Weekly spending pattern insight
         weekday_avg = self.all_data.groupby(self.all_data['date'].dt.day_name())['total_daily_expense'].mean()
         highest_day = weekday_avg.idxmax()
         lowest_day = weekday_avg.idxmin()
-        diff_pct = ((weekday_avg[highest_day] - weekday_avg[lowest_day]) / weekday_avg[lowest_day]) * 100
+        diff_pct = ((weekday_avg[highest_day] - weekday_avg[lowest_day]) / weekday_avg[lowest_day]) * 100 if weekday_avg[lowest_day] != 0 else 0
         
         insights.append(f"Your spending is {diff_pct:.1f}% higher on {highest_day}s compared to {lowest_day}s. Consider planning major purchases for lower-spending days.")
         
         # Trend analysis
         recent_30 = self.all_data.tail(30)['total_daily_expense'].mean()
         previous_30 = self.all_data.tail(60).head(30)['total_daily_expense'].mean()
-        trend_pct = ((recent_30 - previous_30) / previous_30) * 100
+        trend_pct = ((recent_30 - previous_30) / previous_30) * 100 if previous_30 != 0 else 0
         
         if trend_pct > 5:
             insights.append(f"Your spending has increased by {trend_pct:.1f}% in the last 30 days. Consider reviewing your recent expenses to identify any unusual patterns.")
@@ -697,7 +756,7 @@ class BudgetWiseApp:
         # Volatility insight
         expense_std = self.all_data['total_daily_expense'].std()
         expense_mean = self.all_data['total_daily_expense'].mean()
-        cv = (expense_std / expense_mean) * 100
+        cv = (expense_std / expense_mean) * 100 if expense_mean != 0 else 0
         
         if cv > 50:
             insights.append(f"Your spending shows high variability (CV: {cv:.1f}%). Consider creating a more structured budget to reduce expense volatility.")
@@ -708,6 +767,9 @@ class BudgetWiseApp:
     
     def generate_recommendations(self):
         """Generate personalized recommendations"""
+        
+        if 'total_daily_expense' not in self.all_data.columns:
+            return ["Run data preprocessing to get personalized recommendations."]
         
         recommendations = [
             "🎯 **Budget Optimization**: Based on your spending patterns, consider setting a daily spending limit of ${:.2f} to maintain consistency.".format(
@@ -792,8 +854,8 @@ class BudgetWiseApp:
             summary_data = []
             for category, results_df in self.model_results.items():
                 for model_name, row in results_df.iterrows():
-                    mae = row.get('val_mae', 'N/A')
-                    mape = row.get('val_mape', 'N/A')
+                    mae = row.get('val_mae', row.get('MAE', 'N/A'))
+                    mape = row.get('val_mape', row.get('MAPE', 'N/A'))
                     
                     # Filter reasonable values
                     if isinstance(mae, (int, float)) and isinstance(mape, (int, float)):
@@ -842,7 +904,8 @@ def main():
     
     if hasattr(app, 'all_data') and len(app.all_data) > 0:
         st.sidebar.metric("Total Records", f"{len(app.all_data):,}")
-        st.sidebar.metric("Avg Daily Expense", f"${app.all_data['total_daily_expense'].mean():.2f}")
+        if 'total_daily_expense' in app.all_data.columns:
+            st.sidebar.metric("Avg Daily Expense", f"${app.all_data['total_daily_expense'].mean():.2f}")
         st.sidebar.metric("Date Range", f"{(app.all_data['date'].max() - app.all_data['date'].min()).days} days")
     
     st.sidebar.markdown("---")

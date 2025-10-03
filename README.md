@@ -63,7 +63,7 @@ An advanced AI-powered personal expense forecasting system that leverages cuttin
 
 1. **Clone the repository**:
 ```bash
-git clone https://github.com/moah0911/BudgetWise-AI-based-Expense-Forecasting-Tool.git
+git clone https://github.com/gowth/BudgetWise-AI-based-Expense-Forecasting-Tool.git
 cd BudgetWise-AI-based-Expense-Forecasting-Tool
 ```
 
@@ -336,7 +336,7 @@ DEFAULT_CONFIDENCE_LEVEL=90
 ## 🎬 Live Demo & System Output
 
 ### 🚀 Application Launch Output
-```bash
+```
 PS C:\Users\gowth\Infosys> python launch_app.py
 
 🚀 BudgetWise AI Launcher
@@ -504,7 +504,7 @@ We welcome contributions from the community! Here's how you can help:
 ```bash
 # 1. Fork the repository on GitHub
 # 2. Clone your fork locally
-git clone https://github.com/YOUR-USERNAME/BudgetWise-AI-based-Expense-Forecasting-Tool.git
+git clone https://github.com/gowth/BudgetWise-AI-based-Expense-Forecasting-Tool.git
 
 # 3. Create a development branch
 git checkout -b feature/your-feature-name
@@ -551,18 +551,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ## 👥 Team & Credits
 
 ### 🛠️ Core Development Team
-  - AI/ML system design and implementation
-  - Full-stack development and deployment
-  - Technical documentation and user guides
-
-### 🙏 Acknowledgments & Thanks
-### 🛠️ Core Development Team
-**moah0911** - Lead Developer & Project Architect
+**gowth** - Lead Developer & Project Architect
    - AI/ML system design and implementation
    - Full-stack development and deployment
    - Technical documentation and user guides
-
-...existing code...
 
 #### **🔬 Research & Technology**
 - **Scikit-learn Community** - Machine learning foundation
@@ -601,10 +593,10 @@ If this project helped you with your personal finance management, please conside
 
 *Built with ❤️ and cutting-edge AI technology*
 
-**[⭐ Star on GitHub](https://github.com/Mohammed0Arfath/BudgetWise-AI-based-Expense-Forecasting-Tool)** | 
+**[⭐ Star on GitHub](https://github.com/gowth/BudgetWise-AI-based-Expense-Forecasting-Tool)** | 
 **[📖 Documentation](app/USER_MANUAL.md)** | 
 **[🚀 Quick Start](#-quick-start)** | 
-**[💬 Discussions](https://github.com/Mohammed0Arfath/BudgetWise-AI-based-Expense-Forecasting-Tool/discussions)**
+**[💬 Discussions](https://github.com/gowth/BudgetWise-AI-based-Expense-Forecasting-Tool/discussions)**
 
 ---
 

@@ -12,7 +12,7 @@ Your intelligent personal expense forecasting companion powered by advanced mach
 
 1. **Navigate to the project directory**
    ```bash
-   cd "C:\Users\moham\Infosys"
+   cd "C:\Users\gowth\Infosys"
    ```
 
 2. **Start the application** (Choose one method):
