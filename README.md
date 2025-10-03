@@ -63,7 +63,7 @@ An advanced AI-powered personal expense forecasting system that leverages cuttin
 
 1. **Clone the repository**:
 ```bash
-git clone https://github.com/Mohammed0Arfath/BudgetWise-AI-based-Expense-Forecasting-Tool.git
+git clone https://github.com/moah0911/BudgetWise-AI-based-Expense-Forecasting-Tool.git
 cd BudgetWise-AI-based-Expense-Forecasting-Tool
 ```
 
@@ -337,7 +337,7 @@ DEFAULT_CONFIDENCE_LEVEL=90
 
 ### 🚀 Application Launch Output
 ```bash
-PS C:\Users\moham\Infosys> python launch_app.py
+PS C:\Users\gowth\Infosys> python launch_app.py
 
 🚀 BudgetWise AI Launcher
 ========================
