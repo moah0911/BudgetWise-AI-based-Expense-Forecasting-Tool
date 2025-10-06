@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+/myvenv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Logs directory
+logs/*.log
+
+# Temporary files
+*.tmp
+*.temp
+temp/*.csv
+temp/*.json
+
+# Utils directory output
+utils/*.csv
+utils/*.json
+utils/*.png
+
+# Include sample data for cloud deployment (moved to temp)
+!temp/sample_expense_data.csv
+
+# Include Streamlit config for cloud deployment
+!.streamlit/config.toml
+
+# Include app entry point
+!streamlit_app.py
